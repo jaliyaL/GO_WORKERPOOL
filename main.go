@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 /*
@@ -53,7 +55,9 @@ type Info struct {
 
 func main() {
 
-	resp, err := http.Get("https://randomuser.me/api/?results=2&seed=myseed&page=1")
+	start := time.Now()
+
+	resp, err := http.Get("https://randomuser.me/api/?results=5000&seed=myseed&page=1")
 	if err != nil {
 		panic(err)
 	}
@@ -67,5 +71,11 @@ func main() {
 	var data RandomUserResponse
 	err = json.Unmarshal(body, &data)
 	//fmt.Println(data.Results[0].Name.First)
+
+	for i, d := range data.Results {
+		fmt.Println(i, d.Name.First)
+	}
+
+	fmt.Println("elapsed time: ", time.Since(start))
 
 }
