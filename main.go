@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -53,6 +55,16 @@ type Info struct {
 	Page    int    `json:"page"`
 }
 
+func worker(jobs <-chan User, results chan<- User, wg *sync.WaitGroup, counter *uint64) {
+	for jb := range jobs {
+		results <- jb
+		wg.Done()
+
+		// increment counter atomically
+		atomic.AddUint64(counter, 1)
+	}
+}
+
 func main() {
 
 	start := time.Now()
@@ -70,12 +82,38 @@ func main() {
 
 	var data RandomUserResponse
 	err = json.Unmarshal(body, &data)
-	//fmt.Println(data.Results[0].Name.First)
 
-	for i, d := range data.Results {
-		fmt.Println(i, d.Name.First)
+	// create workerpool
+
+	var wg sync.WaitGroup
+
+	const numWorkers = 5
+	var counter uint64
+	jobs := make(chan User, len(data.Results))
+	results := make(chan User, len(data.Results))
+
+	// start workers
+	for w := 1; w <= numWorkers; w++ {
+		go worker(jobs, results, &wg, &counter)
 	}
 
+	// send all data as jobs
+	for _, d := range data.Results {
+		wg.Add(1)
+		jobs <- d
+	}
+	close(jobs)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for r := range results {
+		fmt.Println(r.Name.First)
+	}
+
+	fmt.Printf("Processed %d users\n", counter)
 	fmt.Println("elapsed time: ", time.Since(start))
 
 }
