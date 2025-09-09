@@ -46,7 +46,6 @@ func workers(w int, jobs <-chan int, results chan<- []User, wg *sync.WaitGroup) 
 		fmt.Println("Worker", w, "Page", page, "users:", len(data.Results))
 		results <- data.Results
 	}
-
 }
 
 func main() {
