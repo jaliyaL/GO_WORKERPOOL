@@ -27,7 +27,7 @@ func main() {
 	total := 0
 
 	// 10 pages × 5000 results = 50,000
-	for page := 1; page <= 5; page++ {
+	for page := 1; page <= 10; page++ {
 		url := fmt.Sprintf("https://randomuser.me/api/?results=100&seed=myseed&page=%d", page)
 
 		resp, err := http.Get(url)
