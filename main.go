@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -34,14 +33,19 @@ func workers(w int, jobs <-chan int, results chan<- []User, wg *sync.WaitGroup) 
 		if err != nil {
 			panic(err)
 		}
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		//body, _ := io.ReadAll(resp.Body)
 
 		var data RandomUserResponse
-		if err := json.Unmarshal(body, &data); err != nil {
-			fmt.Println("Error on page", page, ":", err)
+		// if err := json.Unmarshal(body, &data); err != nil {
+		// 	fmt.Println("Error on page", page, ":", err)
+		// 	continue
+		// }
+
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			fmt.Println("Worker", w, "error decoding page", page, ":", err)
 			continue
 		}
+		resp.Body.Close()
 
 		fmt.Println("Worker", w, "Page", page, "users:", len(data.Results))
 		results <- data.Results
