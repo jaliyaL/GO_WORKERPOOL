@@ -27,6 +27,7 @@ func workers(w int, jobs <-chan int, results chan<- []User, wg *sync.WaitGroup) 
 
 	// 10 pages × 100 results = 1000
 	for page := range jobs {
+		defer wg.Done()
 		url := fmt.Sprintf("https://randomuser.me/api/?results=100&seed=myseed&page=%d", page)
 
 		resp, err := http.Get(url)
@@ -42,12 +43,10 @@ func workers(w int, jobs <-chan int, results chan<- []User, wg *sync.WaitGroup) 
 			continue
 		}
 
-		//total += len(data.Results)
-
-		fmt.Println("Page", page, "users:", len(data.Results))
+		fmt.Println("Worker", w, "Page", page, "users:", len(data.Results))
 		results <- data.Results
 	}
-	wg.Done()
+
 }
 
 func main() {
@@ -62,12 +61,13 @@ func main() {
 
 	// start workers
 	for w := 1; w <= numWorkers; w++ {
-		wg.Add(1)
+
 		go workers(w, jobs, results, &wg)
 	}
 
 	// start jobs
 	for j := 1; j <= numPages; j++ {
+		wg.Add(1)
 		jobs <- j
 	}
 	close(jobs)
