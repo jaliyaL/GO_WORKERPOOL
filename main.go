@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -22,12 +23,10 @@ type Name struct {
 	Last  string `json:"last"`
 }
 
-func main() {
-	start := time.Now()
-	total := 0
+func workers(w int, jobs <-chan int, results chan<- []User, wg *sync.WaitGroup) {
 
-	// 10 pages × 5000 results = 50,000
-	for page := 1; page <= 5; page++ {
+	// 10 pages × 100 results = 1000
+	for page := range jobs {
 		url := fmt.Sprintf("https://randomuser.me/api/?results=100&seed=myseed&page=%d", page)
 
 		resp, err := http.Get(url)
@@ -43,9 +42,45 @@ func main() {
 			continue
 		}
 
-		total += len(data.Results)
+		//total += len(data.Results)
 
 		fmt.Println("Page", page, "users:", len(data.Results))
+		results <- data.Results
+	}
+	wg.Done()
+}
+
+func main() {
+	start := time.Now()
+
+	var wg sync.WaitGroup
+	const numPages = 10
+	const numWorkers = 5
+
+	jobs := make(chan int, numPages)
+	results := make(chan []User, numPages)
+
+	// start workers
+	for w := 1; w <= numWorkers; w++ {
+		wg.Add(1)
+		go workers(w, jobs, results, &wg)
+	}
+
+	// start jobs
+	for j := 1; j <= numPages; j++ {
+		jobs <- j
+	}
+	close(jobs)
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	total := 0
+	//receive results channel
+	for res := range results {
+		total += len(res)
 	}
 
 	fmt.Printf("Processed %d users\n", total)
